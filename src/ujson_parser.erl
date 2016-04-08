@@ -37,17 +37,21 @@ parse(<<Bytes/binary>>,[], Acc ) ->
 	lists:reverse(Acc);
 parse(<<Bytes/binary>>, [ Op | Format], Acc) ->
 	case Op of
-		$B -> parse_u8(Bytes,Format,Acc);
-		$b -> parse_s8(Bytes,Format,Acc);
-		$W -> parse_u16(Bytes,Format,Acc);
-		$w -> parse_s16(Bytes,Format,Acc);
-		$I -> parse_u32(Bytes,Format,Acc);
-		$i -> parse_s32(Bytes,Format,Acc);
-		$f -> parse_f32(Bytes,Format,Acc);
-		$d -> parse_f64(Bytes,Format,Acc);
-		$s -> parse_str(Bytes,Format,Acc);
-		$a -> parse_arr(Bytes,Format,Acc);
-		$o -> parse_obj(Bytes,Format,Acc);
+		$B -> parse_u8(Bytes,Format,Acc);	% unsigned byte
+		$b -> parse_s8(Bytes,Format,Acc);	% signed byte
+		$W -> parse_u16(Bytes,Format,Acc);	% unsigned short
+		$w -> parse_s16(Bytes,Format,Acc);	% signed short
+		$I -> parse_u32(Bytes,Format,Acc);	% unsigned int
+		$i -> parse_s32(Bytes,Format,Acc);	% signed int
+		$Q -> parse_u64(Bytes,Format,Acc);	% unsigned long long
+		$q -> parse_s64(Bytes,Format,Acc);	% unsigned long long
+		$f -> parse_f32(Bytes,Format,Acc);	% float
+		$d -> parse_f64(Bytes,Format,Acc);	% double
+		$s -> parse_str(Bytes,Format,Acc);	% string
+		$A -> parse_sarr(Bytes,Format,Acc);	% schema array
+		$a -> parse_arr(Bytes,Format,Acc);	% dynamic array
+		$O -> parse_sobj(Bytes,Format,Acc);	% schema object
+		$o -> parse_obj(Bytes,Format,Acc);	% dynamic object
 	end.
 
 %% tag B
@@ -129,9 +133,19 @@ parse_f64(<<Float:64/big-float,Bytes/binary>>, Format, Acc) ->
 parse_str(<<Count:16/big-integer,Str:Count/binary,Bytes/binary>>, Format, Acc) ->
 	parse(Bytes, Format, [ { $s, Str } | Acc ]).
 
+
+%% tag A
+%%
+%% Static Array Parsing
+%%  +--------+--------+--------+
+%%  | schema | size   | ...    |
+%%  +--------+--------+--------+
+parse_sarr(<<Schema:8,Size:16/big-integer,Array:Size/binary,Bytes/binary>>, Format, Acc) ->
+	parse(Bytes, Format, [ { $A, parse(Schema,Array,[]) } | Acc ]).
+
 %% tag a
 %%
-%% Array Parsing
+%% Dynamic Array Parsing
 %%
 %%  +----------------+-------+------~-+--------+------~-+-----~--+
 %%  | size           | tag   | value  | tag    | value  | ...    |
@@ -170,9 +184,19 @@ parse_array(<<$o,Count:16/big-integer,Object:Count/binary,Values/binary>>, Acc) 
 parse_array(<<_,Values/binary>>, Acc) ->
 	io:format("invalid tag in array~n").
 
+%% tag O
+%%
+%% Static Object Parsing
+%%
+%%  +--------+--------+--------+
+%%  | schema | size   | ...    |
+%%  +--------+--------+--------+
+parse_sobj(<<Schema:8,Size:16/big-integer,Object:Size/binary,Bytes/binary>>, Format, Acc) ->
+	parse(Bytes, Format, [ { $O, parse(Schema,Object,[]) } | Acc ]).
+
 %% tag o
 %%
-%% Object Parsing
+%% Dynamic Object Parsing
 %%
 %%  +----------------+-------+-------+------~-+--------+--------+------~-+-----~--+
 %%  | size           | key   | tag   | value  | key    | tag    | value  | ...    |
