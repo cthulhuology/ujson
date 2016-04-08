@@ -26,11 +26,11 @@ parse(Data) when is_binary(Data) ->
 %%
 parse(<<Schema:8,Bytes/binary>>, Acc) -> 
 	Format = schema:lookup(Schema),
-	parse(Bytes,Format,Acc)).
+	parse(Bytes,Format,Acc).
 
 parse(<<>>,[],Acc) ->
 	lists:reverse(Acc);
-parse(<<>>,Format,Acc) ->
+parse(<<>>,_Format,_Acc) ->
 	io:format("incomplete message~n");
 parse(<<Bytes/binary>>,[], Acc ) ->
 	io:format("extra data ~p~n", [ Bytes ]),
@@ -51,7 +51,7 @@ parse(<<Bytes/binary>>, [ Op | Format], Acc) ->
 		$A -> parse_sarr(Bytes,Format,Acc);	% schema array
 		$a -> parse_arr(Bytes,Format,Acc);	% dynamic array
 		$O -> parse_sobj(Bytes,Format,Acc);	% schema object
-		$o -> parse_obj(Bytes,Format,Acc);	% dynamic object
+		$o -> parse_obj(Bytes,Format,Acc)	% dynamic object
 	end.
 
 %% tag B
@@ -67,7 +67,7 @@ parse_u8(<<Int:8/integer,Bytes/binary>>, Format, Acc) ->
 %% +--------+
 %% | byte   |
 %% +--------+
-parse_s8(<<Int:8/signed-integer,Bytes/binary, Format, Acc) ->
+parse_s8(<<Int:8/signed-integer,Bytes/binary>>, Format, Acc) ->
 	parse(Bytes, Format, [ { $b, Int } | Acc ]).
 
 %% tag W
@@ -181,7 +181,7 @@ parse_array(<<$a,Count:16/big-integer,Array:Count/binary,Values/binary>>, Acc) -
 	parse_array(Values, [ { $a, parse_array(Array,[]) } | Acc ]);
 parse_array(<<$o,Count:16/big-integer,Object:Count/binary,Values/binary>>, Acc) ->
 	parse_array(Values, [ { $o, parse_object(Object,[]) } | Acc ]); 	
-parse_array(<<_,Values/binary>>, Acc) ->
+parse_array(<<_,_Values/binary>>, _Acc) ->
 	io:format("invalid tag in array~n").
 
 %% tag O
@@ -202,7 +202,7 @@ parse_sobj(<<Schema:8,Size:16/big-integer,Object:Size/binary,Bytes/binary>>, For
 %%  | size           | key   | tag   | value  | key    | tag    | value  | ...    |
 %%  +----------------+-------+-------+------~-+--------+--------+------~-+-----~--+
 parse_obj(<<Size:16/big-integer,Object:Size/binary,Bytes/binary>>, Format, Acc) ->
-	parse(Bytes, Format, [ { $a, parse_object(Object) } | Acc ]).
+	parse(Bytes, Format, [ { $a, parse_object(Object,[]) } | Acc ]).
 
 parse_object(<<>>, Acc) ->
 	lists:reverse(Acc);
@@ -232,7 +232,7 @@ parse_object(<<Keylen:16/big-integer,Key:Keylen/binary,$a,Count:16/big-integer,A
 	parse_object(Values, [ { Key, $a, parse_array(Array,[]) } | Acc ]);
 parse_object(<<Keylen:16/big-integer,Key:Keylen/binary,$o,Count:16/big-integer,Object:Count/binary,Values/binary>>, Acc) ->
 	parse_object(Values, [ { Key, $o, parse_object(Object,[]) } | Acc ]); 	
-parse_array(<<Keylen:16/big-integer,Key:Keylen/binary,_,Values/binary>>, Acc) ->
+parse_object(<<_Keylen:16/big-integer,_Key:_Keylen/binary,_,_Values/binary>>, _Acc) ->
 	io:format("invalid tag in object~n").
 
 
