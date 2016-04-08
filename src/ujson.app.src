@@ -1,0 +1,12 @@
+{application, ujson,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { ujson_app, []}},
+  {env, []}
+ ]}.
