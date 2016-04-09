@@ -48,10 +48,12 @@ parse(<<Bytes/binary>>, [ Op | Format], Acc) ->
 		$f -> parse_f32(Bytes,Format,Acc);	% float
 		$d -> parse_f64(Bytes,Format,Acc);	% double
 		$s -> parse_str(Bytes,Format,Acc);	% string
-		$A -> parse_sarr(Bytes,Format,Acc);	% schema array
+		$A -> parse_sarr(Bytes,Format,Acc);	% static array
 		$a -> parse_arr(Bytes,Format,Acc);	% dynamic array
-		$O -> parse_sobj(Bytes,Format,Acc);	% schema object
-		$o -> parse_obj(Bytes,Format,Acc)	% dynamic object
+		$O -> parse_sobj(Bytes,Format,Acc);	% static object
+		$o -> parse_obj(Bytes,Format,Acc);	% dynamic object
+		$U -> parse_schema(Bytes,Format,Acc);	% ujson schema
+		$/ -> parse_request(Bytes,Format,Acc)	% ujson schema request
 	end.
 
 %% tag B
