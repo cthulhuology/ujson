@@ -33,7 +33,7 @@ decode(<<"null", _Rest/binary>>) ->
 	null;
 decode(<<_:8, Rest/binary>> = Number) ->
 	case decode_number(Number,[]) of
-		{ Num, Rem } -> Num;
+		{ Num, _Rem } -> Num;
 		_ -> decode(Rest)
 	end.
 
