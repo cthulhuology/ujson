@@ -5,13 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Public Methods
 
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Private Methods
-%%
-
 %% decodes json binaries
 %%
 decode(<<>>) -> 
@@ -36,7 +29,6 @@ decode(<<_:8, Rest/binary>> = Number) ->
 		{ Num, _Rem } -> Num;
 		_ -> decode(Rest)
 	end.
-
 
 %% encode method, takes a binary and generates an object
 %%
@@ -77,6 +69,9 @@ encode( Data) when is_list(Data) ->
 	Arr = join(Nest),	
 	<<$[, Arr/binary, $]>>.
 	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Private Methods
+%%
 
 %% decode value
 decode_value(<<>>) -> 
@@ -98,7 +93,6 @@ decode_value(<<_:8,Rest/binary>> = Number) ->
 		{ Num, Rem } -> { Num, Rem };
 		_ -> decode_value(Rest)
 	end.
-
 
 %% Decode an object
 decode_object(<<$},Rest/binary>>,[]) ->
@@ -202,7 +196,6 @@ decode_number(Rem,Acc) ->
 to_number([]) ->
 	false;	
 to_number(Acc) ->
-	io:format("decode ~p~n", [ Acc ] ),
 	try list_to_float(Acc)
 	catch error:badarg -> list_to_integer(Acc) end.
 
@@ -228,10 +221,6 @@ join([ A, B | Rest ], Acc)  when is_binary(A) and is_binary(B) ->
 join([ B ], Acc) when is_binary(B) ->
 	<< Acc/binary, B/binary >>.
 	
-
-
-
-
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
@@ -281,6 +270,5 @@ string_test() ->
 	?assertEqual( <<"foo\"bar">>, json:decode(<<"\"foo\\\"bar\"">>)),
 	?assertEqual( <<"foobar">>, json:decode(<<"   \"foobar\"   ">>)),
 	?assertEqual( <<"    foobar    ">>, json:decode(<<"\"    foobar    \"   ">>)).
-
 
 -endif.
