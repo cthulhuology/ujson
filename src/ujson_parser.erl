@@ -44,8 +44,9 @@ parse(<<Bytes/binary>>,[], Acc ) ->
 	lists:reverse(Acc);
 parse(<<Bytes/binary>>, [ Op | Format], Acc) ->
 	case Op of
-		$B -> parse_u8(Bytes,Format,Acc);	% unsigned byte
-		$b -> parse_s8(Bytes,Format,Acc);	% signed byte
+		$b -> parse_bool(Bytes,Format,Acc);	% boolean
+		$C -> parse_u8(Bytes,Format,Acc);	% unsigned byte
+		$c -> parse_s8(Bytes,Format,Acc);	% signed byte
 		$W -> parse_u16(Bytes,Format,Acc);	% unsigned short
 		$w -> parse_s16(Bytes,Format,Acc);	% signed short
 		$I -> parse_u32(Bytes,Format,Acc);	% unsigned int
@@ -62,7 +63,15 @@ parse(<<Bytes/binary>>, [ Op | Format], Acc) ->
 		$U -> parse_schema(Bytes,Format,Acc)	% ujson inline schema
 	end.
 
-%% tag B
+%% tag b
+%%
+%% +--------+
+%% | Byte   |
+%% +--------+
+parse_bool(<<Bool:8/integer,Bytes/binary>>, Format, Acc) ->
+	parse(Bytes, Format, [ { bool, Bool /= 0 } | Acc ]).
+
+%% tag C
 %%
 %% +--------+
 %% | Byte   |
@@ -70,7 +79,7 @@ parse(<<Bytes/binary>>, [ Op | Format], Acc) ->
 parse_u8(<<Int:8/integer,Bytes/binary>>, Format, Acc) ->
 	parse(Bytes, Format, [ { u8, Int } | Acc ]).
 
-%% tag b
+%% tag c
 %%
 %% +--------+
 %% | byte   |
