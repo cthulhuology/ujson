@@ -2,7 +2,7 @@
 -author({ "David J Goehrig", "dave@dloh.org" }).
 -copyright(<<"(C) 2016 David J. Goehrig"/utf8>>).
 
--export([ parse/1 ]).
+-export([ parse/1, parse/2 ]).
 
 -record(ujson_request, { schema, port, ipv4, ipv6 }).
 
@@ -56,10 +56,10 @@ parse(<<Bytes/binary>>, [ Op | Format], Acc) ->
 		$f -> parse_f32(Bytes,Format,Acc);	% float
 		$d -> parse_f64(Bytes,Format,Acc);	% double
 		$s -> parse_str(Bytes,Format,Acc);	% string
-		$A -> parse_sarr(Bytes,Format,Acc);	% static array
-		$a -> parse_arr(Bytes,Format,Acc);	% dynamic array
-		$O -> parse_sobj(Bytes,Format,Acc);	% static object
-		$o -> parse_obj(Bytes,Format,Acc);	% dynamic object
+		$A -> parse_static_array(Bytes,Format,Acc);	% static array
+		$a -> parse_array(Bytes,Format,Acc);	% dynamic array
+		$O -> parse_static_object(Bytes,Format,Acc);	% static object
+		$o -> parse_object(Bytes,Format,Acc);	% dynamic object
 		$U -> parse_schema(Bytes,Format,Acc)	% ujson inline schema
 	end.
 
@@ -157,7 +157,7 @@ parse_str(<<Count:16/big-integer,Str:Count/binary,Bytes/binary>>, Format, Acc) -
 %%  +--------+--------+--------+
 %%  | schema | size   | ...    |
 %%  +--------+--------+--------+
-parse_sarr(<<Schema:8,Size:16/big-integer,Array:Size/binary,Bytes/binary>>, Format, Acc) ->
+parse_static_array(<<Schema:8,Size:16/big-integer,Array:Size/binary,Bytes/binary>>, Format, Acc) ->
 	parse(Bytes, Format, [ { array, parse(Schema,Array,[]) } | Acc ]).
 
 %% tag a
@@ -167,14 +167,16 @@ parse_sarr(<<Schema:8,Size:16/big-integer,Array:Size/binary,Bytes/binary>>, Form
 %%  +----------------+-------+------~-+--------+------~-+-----~--+
 %%  | size           | tag   | value  | tag    | value  | ...    |
 %%  +----------------+-------+------~-+--------+------~-+-----~--+
-parse_arr(<<Size:16/big-integer,Array:Size/binary,Bytes/binary>>, Format, Acc) ->
+parse_array(<<Size:16/big-integer,Array:Size/binary,Bytes/binary>>, Format, Acc) ->
 	parse(Bytes, Format, [ { object, parse_array(Array,[]) } | Acc ]).
 
 parse_array(<<>>, Acc) ->
 	lists:reverse(Acc);
-parse_array(<<$B,Int:8/integer,Values/binary>>, Acc) ->
+parse_array(<<$b,Bool:8/integer,Values/binary>>, Acc) ->
+	parse_array(Values, [ { bool, Bool /= 0 } | Acc ]);
+parse_array(<<$C,Int:8/integer,Values/binary>>, Acc) ->
 	parse_array(Values, [ { u8, Int } | Acc ]);
-parse_array(<<$b,Int:8/integer,Values/binary>>, Acc) ->
+parse_array(<<$c,Int:8/integer,Values/binary>>, Acc) ->
 	parse_array(Values, [ { s8, Int } | Acc ]);
 parse_array(<<$W,Int:16/big-integer,Values/binary>>, Acc) ->
 	parse_array(Values, [ { u16, Int } | Acc ]);
@@ -208,7 +210,7 @@ parse_array(<<_,_Values/binary>>, _Acc) ->
 %%  +--------+--------+--------+
 %%  | schema | size   | ...    |
 %%  +--------+--------+--------+
-parse_sobj(<<Schema:8,Size:16/big-integer,Object:Size/binary,Bytes/binary>>, Format, Acc) ->
+parse_static_object(<<Schema:8,Size:16/big-integer,Object:Size/binary,Bytes/binary>>, Format, Acc) ->
 	parse(Bytes, Format, [ { object, parse(Schema,Object,[]) } | Acc ]).
 
 %% tag o
@@ -218,14 +220,16 @@ parse_sobj(<<Schema:8,Size:16/big-integer,Object:Size/binary,Bytes/binary>>, For
 %%  +----------------+-------+-------+------~-+--------+--------+------~-+-----~--+
 %%  | size           | key   | tag   | value  | key    | tag    | value  | ...    |
 %%  +----------------+-------+-------+------~-+--------+--------+------~-+-----~--+
-parse_obj(<<Size:16/big-integer,Object:Size/binary,Bytes/binary>>, Format, Acc) ->
+parse_object(<<Size:16/big-integer,Object:Size/binary,Bytes/binary>>, Format, Acc) ->
 	parse(Bytes, Format, [ { array, parse_object(Object,[]) } | Acc ]).
 
 parse_object(<<>>, Acc) ->
 	lists:reverse(Acc);
-parse_object(<<Keylen:16/big-integer,Key:Keylen/binary,$B,Int:8/integer,Values/binary>>, Acc) ->
+parse_object(<<Keylen:16/big-integer,Key:Keylen/binary,$b,Bool:8/integer,Values/binary>>, Acc) ->
+	parse_object(Values, [ { Key, bool, Bool /= 0 } | Acc ]);
+parse_object(<<Keylen:16/big-integer,Key:Keylen/binary,$C,Int:8/integer,Values/binary>>, Acc) ->
 	parse_object(Values, [ { Key, u8, Int } | Acc ]);
-parse_object(<<Keylen:16/big-integer,Key:Keylen/binary,$b,Int:8/integer,Values/binary>>, Acc) ->
+parse_object(<<Keylen:16/big-integer,Key:Keylen/binary,$c,Int:8/integer,Values/binary>>, Acc) ->
 	parse_object(Values, [ { Key, s8, Int } | Acc ]);
 parse_object(<<Keylen:16/big-integer,Key:Keylen/binary,$W,Int:16/big-integer,Values/binary>>, Acc) ->
 	parse_object(Values, [ { Key, u16, Int } | Acc ]);

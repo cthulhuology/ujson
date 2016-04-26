@@ -2,14 +2,11 @@
 -author({ "David J Goehrig", "dave@dloh.org" }).
 -copyright(<<"(C) 2016 David J. Goehrig"/utf8>>).
 
--export([ render/1, format/2 ]).
+-export([ render/1, render/2, format/2 ]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Public Methods
 %%
-
-format(Data,Format) ->
-	format(Data,Format,<<>>).
 
 render(true) ->
 	<< -1:8 >>;
@@ -18,20 +15,23 @@ render(false) ->
 	<< 0:8 >>;
 
 render(null) ->
-	<< 0:16/big-integer >>;
+	<< 0:16/big-unsigned-integer >>;
 
 render(<<>>) ->
-	<< 0:16/big-integer >>;
+	<< 0:16/big-unsigned-integer >>;
 
 render([]) ->
-	<< 0:16/big-integer >>;
+	<< 0:16/big-unsigned-integer >>;
+
+render([{}]) ->
+	<< 0:16/big-unsigned-integer >>;
 
 render(Atom) when is_atom(Atom) ->
-	render(atom_to_list(Atom));
+	render(list_to_binary(atom_to_list(Atom)));
 
 render(String) when is_binary(String) ->	
 	L = size(String),
-	<< L:16/big-integer, String/binary >>;
+	<< L:16/big-unsigned-integer, String/binary >>;
 
 render(Int) when is_integer(Int) ->
 	<< Int:32/big-integer >>;
@@ -46,7 +46,10 @@ render({K,V}) ->
 	<< Key/binary, Tag/binary, Value/binary >>;
 
 render([H|T]) ->
-	render([H,T],<<>>).
+	render([H|T],<<>>).
+
+format(Data,Format) ->
+	format(Data,Format,<<>>).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Private Methods
@@ -55,15 +58,19 @@ render([H|T]) ->
 %% render a list
 render([],Acc) ->
 	L = size(Acc),
-	<< L:16/big-integer, Acc/binary>>;
-render([H|T], Acc) ->
+	<< L:16/big-unsigned-integer, Acc/binary>>;
+render([{K,V}|T],Acc) ->
+	Term = render({K,V}),
+	render( T, << Acc/binary, Term/binary>>);
+render([H|T],Acc) ->
+	Tag = tag(H),
 	Term = render(H),
-	render( T, << Acc/binary, Term>>).
+	render( T, << Acc/binary, Tag/binary, Term/binary>>).
 
 %% format
 %% 
 
-format([D|DT], [H|T], Acc) ->
+format([D|DT],[H|T],Acc) ->
 	case H of
 		$b -> format(DT,T,<< Acc, D:8 >>);
 		$C -> format(DT,T,<< Acc, D:8 >>);
@@ -113,12 +120,35 @@ format_object(DT,T,D,Acc) ->
 
 format_tagged_kv([],Acc) ->
 	Acc;
-format_tagged_kv([ {K,V} | T ], Acc ) ->
+format_tagged_kv([{K,V}|T],Acc) ->
 	SLen = size(K),
 	<< C:8>> = Tag = tag(V),
 	Val = format( [V], [C], <<>>),
 	format_tagged_kv( T, << Acc/binary, SLen:16/big-unsigned-integer,
 		K/binary, Tag/binary, Val/binary >>).
+
+format_static_array(DT,[S|T],null,Acc) ->
+	format( DT, T, << Acc/binary, S:8, 0:16/big-unsigned-integer >>);
+format_static_array(DT,[S|T],A,Acc) ->
+	Schema = ujson_schema:lookup(S),
+	Bin = format( A, Schema, <<>>),
+	Len = size(Bin),
+	format( DT, T, << Acc/binary, S:8, Len:16/big-unsigned-integer,
+		Bin/binary >>).
+
+format_static_object(DT,[S|T],null,Acc) ->
+	format( DT, T, << Acc/binary, S:8, 0:16/big-unsigned-integer >>);
+format_static_object(DT,[S|T],O,Acc) ->
+	Schema = ujson_schema:lookup(S),
+	Bin = format( O, Schema, <<>>),
+	Len = size(Bin),
+	format( DT, T, << Acc/binary, S:8, Len:16/big-unsigned-integer,
+		Bin/binary >>). 
+	
+format_schema(DT,T,S,Acc) ->
+	Len = size(S),
+	format( DT, T, << Acc/binary, $U, Len:16/big-unsigned-integer,
+		S/binary >>).
 
 %% tags for dynamic types
 %%
