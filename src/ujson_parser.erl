@@ -221,7 +221,7 @@ parse_static_object(<<Schema:8,Size:16/big-integer,Object:Size/binary,Bytes/bina
 %%  | size           | key   | tag   | value  | key    | tag    | value  | ...    |
 %%  +----------------+-------+-------+------~-+--------+--------+------~-+-----~--+
 parse_object(<<Size:16/big-integer,Object:Size/binary,Bytes/binary>>, Format, Acc) ->
-	parse(Bytes, Format, [ { array, parse_object(Object,[]) } | Acc ]).
+	parse(Bytes, Format, [ { object, parse_object(Object,[]) } | Acc ]).
 
 parse_object(<<>>, Acc) ->
 	lists:reverse(Acc);
