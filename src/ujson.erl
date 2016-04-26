@@ -50,7 +50,6 @@ render({K,V}) ->
 	Value = render(V),
 	<< Len:16/big-unsigned-integer, K/binary, Value/binary >>;
 render([H|T]) when is_tuple(H) ->
-	io:format("rendering object~n"),
 	render(object, [H|T], <<>>);
 render([H|T]) ->
 	render(array, [H|T], <<>>).
