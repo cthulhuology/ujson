@@ -2,99 +2,102 @@
 -author({ "David J Goehrig", "dave@dloh.org" }).
 -copyright(<<"(C) 2016 David J. Goehrig"/utf8>>).
 
--export([ extract/2, strip/1, stripped/1 ]).
+-export([ extract/2, format/1, data/1 ]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Public Methods
 %%
 
-stripped(false) ->
+%% data returns a packed data representation suitable for use with a schema
+data(false) ->
 	<< $f >>;
-stripped(true) ->
+data(true) ->
 	<< $t >>;
-stripped(null) ->
+data(null) ->
 	<< $n >>;
-stripped(<<>>) ->
+data(<<>>) ->
 	<< 0:16/big-unsigned-integer >>;
-stripped([]) ->
+data([]) ->
 	<< 0:16/big-unsigned-integer >>;
-stripped([{}]) ->
+data([{}]) ->
 	<< 0:16/big-unsigned-integer >>;
-stripped(Atom) when is_atom(Atom) ->
-	stripped(list_to_binary(atom_to_list(Atom)));
-stripped(String) when is_binary(String) ->	
+data(Atom) when is_atom(Atom) ->
+	data(list_to_binary(atom_to_list(Atom)));
+data(String) when is_binary(String) ->	
 	L = size(String),
 	<< L:16/big-unsigned-integer, String/binary >>;
-stripped(Int) when is_integer(Int), Int >= -128, Int < 128 ->
+data(Int) when is_integer(Int), Int >= -128, Int < 128 ->
 	<< Int:8 >>;
-stripped(Int) when is_integer(Int), Int >= 0, Int < 256 ->
+data(Int) when is_integer(Int), Int >= 0, Int < 256 ->
 	<< Int:8 >>;
-stripped(Int) when is_integer(Int), Int >= -32768, Int < 32768 ->
+data(Int) when is_integer(Int), Int >= -32768, Int < 32768 ->
 	<< Int:16/big-integer >>;
-stripped(Int) when is_integer(Int), Int >= 0, Int < 65536 ->
+data(Int) when is_integer(Int), Int >= 0, Int < 65536 ->
 	<< Int:16/big-unsigned-integer >>;
-stripped(Int) when is_integer(Int), Int >= -2147483648, Int < 2147483648 ->
+data(Int) when is_integer(Int), Int >= -2147483648, Int < 2147483648 ->
 	<< Int:32/big-integer >>;
-stripped(Int) when is_integer(Int), Int >= 0, Int < 4294967296 ->
+data(Int) when is_integer(Int), Int >= 0, Int < 4294967296 ->
 	<< Int:32/big-unsigned-integer >>;
-stripped(Int) when is_integer(Int), Int < 0 ->
+data(Int) when is_integer(Int), Int < 0 ->
 	<< Int:64/big-integer >>;
-stripped(Int) when is_integer(Int) ->
+data(Int) when is_integer(Int) ->
 	<< Int:64/big-unsigned-integer >>;
-stripped(Float) when is_float(Float), Float > 1.0e8 ; Float < -1.0e8 ->
+data(Float) when is_float(Float), Float > 1.0e8 ; Float < -1.0e8 ->
 	<< Float:64/big-float >>;
-stripped(Float) when is_float(Float) ->
+data(Float) when is_float(Float) ->
 	<< Float:32/big-float >>;
-stripped({K,V}) ->
+data({K,V}) ->
 	Len = size(K),
-	Value = stripped(V),
+	Value = data(V),
 	<< Len:16/big-unsigned-integer, K/binary, Value/binary >>;
-stripped([H|T]) when is_tuple(H) ->
-	stripped(object, [H|T], <<>>);
-stripped([H|T]) ->
-	stripped(array, [H|T], <<>>).
+data([H|T]) when is_tuple(H) ->
+	data(object, [H|T], <<>>);
+data([H|T]) ->
+	data(array, [H|T], <<>>).
 
-strip(<<>>) ->
+%% format returns a ujson schema object describing sample data
+format(<<>>) ->
 	null;
-strip(<< $n, Rest/binary>>) ->
+format(<< $n, Rest/binary>>) ->
 	{ $n, Rest };
-strip(<< $t, Rest/binary>>) ->
+format(<< $t, Rest/binary>>) ->
 	{ $b, Rest }; 
-strip(<< $f, Rest/binary>>) ->
+format(<< $f, Rest/binary>>) ->
 	{ $b, Rest }; 
-strip(<< $c, _Int:8, Rest/binary>>) ->
+format(<< $c, _Int:8, Rest/binary>>) ->
 	{ $c, Rest };
-strip(<< $C, _Int:8, Rest/binary>>) ->
+format(<< $C, _Int:8, Rest/binary>>) ->
 	{ $C, Rest };
-strip(<< $w, _Int:16/big-integer, Rest/binary>>) ->
+format(<< $w, _Int:16/big-integer, Rest/binary>>) ->
 	{ $w, Rest };
-strip(<< $W, _Int:16/big-unsigned-integer, Rest/binary>>) ->
+format(<< $W, _Int:16/big-unsigned-integer, Rest/binary>>) ->
 	{ $W, Rest };
-strip(<< $i, _Int:32/big-integer, Rest/binary>>) ->
+format(<< $i, _Int:32/big-integer, Rest/binary>>) ->
 	{ $i, Rest };
-strip(<< $I, _Int:32/big-unsigned-integer, Rest/binary>>) ->
+format(<< $I, _Int:32/big-unsigned-integer, Rest/binary>>) ->
 	{ $I, Rest };
-strip(<< $q, _Int:64/big-integer, Rest/binary>>) ->
+format(<< $q, _Int:64/big-integer, Rest/binary>>) ->
 	{ $q, Rest };
-strip(<< $Q, _Int:64/big-unsigned-integer, Rest/binary>>) ->
+format(<< $Q, _Int:64/big-unsigned-integer, Rest/binary>>) ->
 	{ $Q, Rest };
-strip(<< $d, _Float:32/big-float, Rest/binary>>) ->
+format(<< $d, _Float:32/big-float, Rest/binary>>) ->
 	{ $d, Rest }; 
-strip(<< $D, _Float:64/big-float, Rest/binary>>) ->
+format(<< $D, _Float:64/big-float, Rest/binary>>) ->
 	{ $D, Rest }; 
-strip(<< $s, 0:16/big-unsigned-integer, Rest/binary>>) ->
+format(<< $s, 0:16/big-unsigned-integer, Rest/binary>>) ->
 	{ $s, Rest };
-strip(<< $s, Size:16/big-unsigned-integer, _String:Size/binary, Rest/binary >>) ->
+format(<< $s, Size:16/big-unsigned-integer, _String:Size/binary, Rest/binary >>) ->
 	{ $s, Rest };
-strip(<< $a, 0:16/big-unsigned-integer, Rest/binary >>) ->
+format(<< $a, 0:16/big-unsigned-integer, Rest/binary >>) ->
 	{ $a, Rest };
-strip(<< $a, Size:16/big-unsigned-integer, Array:Size/binary, Rest/binary >>) ->
-	{ strip_array(Array,[]), Rest };
-strip(<< $o, 0:16/big-unsigned-integer, Rest/binary >>) ->
+format(<< $a, Size:16/big-unsigned-integer, Array:Size/binary, Rest/binary >>) ->
+	{ format_array(Array,[]), Rest };
+format(<< $o, 0:16/big-unsigned-integer, Rest/binary >>) ->
 	{ $o, Rest };
-strip(<< $o, Size:16/big-unsigned-integer, Object:Size/binary, Rest/binary >>) ->
-	{ strip_object(Object,[]), Rest }.
+format(<< $o, Size:16/big-unsigned-integer, Object:Size/binary, Rest/binary >>) ->
+	{ format_object(Object,[]), Rest }.
 
+%% extract applies a Schema generated by schema:format to data by schema:data 
 extract(Data,Schema) ->
 	case extract(Data,Schema,[]) of
 	{ [ Result ], <<>>, [] }  -> Result;
@@ -105,30 +108,30 @@ extract(Data,Schema) ->
 %% Private Methods
 %%
 
-%% stripped a list
-stripped(object,[],Acc) ->
+%% data a list
+data(object,[],Acc) ->
 	L = size(Acc),
 	<< L:16/big-unsigned-integer, Acc/binary >>;
-stripped(array,[],Acc) ->
+data(array,[],Acc) ->
 	L = size(Acc),
 	<< L:16/big-unsigned-integer, Acc/binary >>;
-stripped(Type, [H|T],Acc) ->
-	Term = stripped(H),
-	stripped(Type, T, << Acc/binary, Term/binary >>).
+data(Type, [H|T],Acc) ->
+	Term = data(H),
+	data(Type, T, << Acc/binary, Term/binary >>).
 
 %% parse an array
-strip_array(<<>>, Acc) ->
+format_array(<<>>, Acc) ->
 	[ $a | lists:reverse(Acc) ];
-strip_array(Array, Acc ) ->
-	{ Value, Rem } = strip(Array),
-	strip_array(Rem, [ Value | Acc ]).
+format_array(Array, Acc ) ->
+	{ Value, Rem } = format(Array),
+	format_array(Rem, [ Value | Acc ]).
 
 %% parse and object
-strip_object(<<>>, Acc) ->
+format_object(<<>>, Acc) ->
 	[ $o | lists:reverse(Acc) ];
-strip_object(<<Len:16/big-unsigned-integer, _Key:Len/binary, Data/binary>>,Acc) ->
-	{ Value, Rem } = strip(Data),
-	strip_object(Rem, [ Value| Acc ]).
+format_object(<<Len:16/big-unsigned-integer, _Key:Len/binary, Data/binary>>,Acc) ->
+	{ Value, Rem } = format(Data),
+	format_object(Rem, [ Value| Acc ]).
 
 extract(Data,[],Acc) ->
 	{ lists:reverse(Acc), Data, [] };
