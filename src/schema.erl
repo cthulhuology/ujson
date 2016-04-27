@@ -27,9 +27,9 @@ data(String) when is_binary(String) ->
 	L = size(String),
 	<< L:16/big-unsigned-integer, String/binary >>;
 data(Int) when is_integer(Int), Int >= -128, Int < 128 ->
-	<< Int:8 >>;
+	<< Int:8/signed-integer >>;
 data(Int) when is_integer(Int), Int >= 0, Int < 256 ->
-	<< Int:8 >>;
+	<< Int:8/unsigned-integer >>;
 data(Int) when is_integer(Int), Int >= -32768, Int < 32768 ->
 	<< Int:16/big-integer >>;
 data(Int) when is_integer(Int), Int >= 0, Int < 65536 ->
@@ -64,9 +64,9 @@ format(<< $t, Rest/binary>>) ->
 	{ $b, Rest }; 
 format(<< $f, Rest/binary>>) ->
 	{ $b, Rest }; 
-format(<< $c, _Int:8, Rest/binary>>) ->
+format(<< $c, _Int:8/signed, Rest/binary>>) ->
 	{ $c, Rest };
-format(<< $C, _Int:8, Rest/binary>>) ->
+format(<< $C, _Int:8/unsigned, Rest/binary>>) ->
 	{ $C, Rest };
 format(<< $w, _Int:16/big-integer, Rest/binary>>) ->
 	{ $w, Rest };
@@ -143,9 +143,9 @@ extract(<<$t, Rest/binary>>, [ $b | T ], Acc ) ->
 	extract(Rest,T, [ true | Acc ]);  
 extract(<<$f, Rest/binary>>, [ $b | T ], Acc ) ->
 	extract(Rest,T, [ false | Acc ]);
-extract(<<Int:8, Rest/binary>>, [ $c | T ], Acc ) ->
+extract(<<Int:8/signed-integer, Rest/binary>>, [ $c | T ], Acc ) ->
 	extract(Rest, T, [ Int | Acc ]);
-extract(<<Int:8/signed, Rest/binary>>, [ $C | T ], Acc ) ->
+extract(<<Int:8/unsigned-integer, Rest/binary>>, [ $C | T ], Acc ) ->
 	extract(Rest, T, [ Int | Acc ]);
 extract(<<Int:16/big-integer, Rest/binary>>, [ $w | T ], Acc ) ->
 	extract(Rest, T, [ Int | Acc ]);
@@ -178,9 +178,9 @@ extract(<<Size:16/big-unsigned-integer,Object:Size/binary,Rest/binary>>, [ [$o|S
 	extract(Rest, T, [ extract_object(Object,S,[]) | Acc ]).
 
 extract_object(<<>>, _, Acc ) ->
-	lists:reverse(Acc);
+	{ lists:reverse(Acc), <<>>, [] };
 extract_object(_, [], Acc ) ->
-	lists:reverse(Acc);
+	{ lists:reverse(Acc), <<>>, [] };
 extract_object(<<Len:16/big-unsigned-integer,Key:Len/binary,Value/binary>>, [ Tag | T ], Acc) ->
 	{ [ V ], Rem, _ } = extract(Value, [ Tag ], []),
 	extract_object(Rem, T, [ { Key, V } | Acc ]).
