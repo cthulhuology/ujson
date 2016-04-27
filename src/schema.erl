@@ -96,7 +96,10 @@ strip(<< $o, Size:16/big-unsigned-integer, Object:Size/binary, Rest/binary >>) -
 	{ strip_object(Object,[]), Rest }.
 
 extract(Data,Schema) ->
-	extract(Data,Schema,[]).
+	case extract(Data,Schema,[]) of
+	{ [ Result ], <<>>, [] }  -> Result;
+	{ [ Result ], Rest, Fmt } -> { Result, Rest, Fmt }
+	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Private Methods
@@ -160,12 +163,14 @@ extract(<<Float:64/big-float, Rest/binary>>, [ $D | T ], Acc ) ->
 extract(<<Size:16/big-unsigned-integer,String:Size/binary,Rest/binary>>, [ $s | T ], Acc ) ->
 	extract(Rest, T, [ String | Acc ]);
 extract(<<Size:16/big-unsigned-integer,Array:Size/binary,Rest/binary>>, [ $a | T ], Acc ) ->
-	extract(Array, T, [] );
+	{ Obj, Rem, Fmt } = extract(Array, T, [] ),
+	extract( << Rem/binary, Rest/binary>>, Fmt,  [ Obj | Acc ]);
 extract(<<Size:16/big-unsigned-integer,Array:Size/binary,Rest/binary>>, [ [$a|S] | T ], Acc ) ->
 	extract(Rest, T, [ extract(Array,S,[]) | Acc ]);
 
 extract(<<Size:16/big-unsigned-integer,Object:Size/binary,Rest/binary>>, [ $o | T ], Acc ) ->
-	extract_object(Object, T, [] );
+	{ Obj, Rem, Fmt } = extract_object(Object, T, [] ),
+	extract( << Rem/binary, Rest/binary>>, Fmt,  [ Obj | Acc ]);
 extract(<<Size:16/big-unsigned-integer,Object:Size/binary,Rest/binary>>, [ [$o|S] | T ], Acc ) ->
 	extract(Rest, T, [ extract_object(Object,S,[]) | Acc ]).
 
@@ -175,6 +180,5 @@ extract_object(_, [], Acc ) ->
 	lists:reverse(Acc);
 extract_object(<<Len:16/big-unsigned-integer,Key:Len/binary,Value/binary>>, [ Tag | T ], Acc) ->
 	{ [ V ], Rem, _ } = extract(Value, [ Tag ], []),
-	io:format("extracted ~p~n", [ V ]),	
 	extract_object(Rem, T, [ { Key, V } | Acc ]).
 	
