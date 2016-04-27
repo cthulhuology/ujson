@@ -26,9 +26,9 @@ render(String) when is_binary(String) ->
 	L = size(String),
 	<< $s, L:16/big-unsigned-integer, String/binary >>;
 render(Int) when is_integer(Int), Int >= -128, Int < 128 ->
-	<< $c, Int:8 >>;
+	<< $c, Int:8/signed-integer >>;
 render(Int) when is_integer(Int), Int >= 0, Int < 256 ->
-	<< $C, Int:8 >>;
+	<< $C, Int:8/unsigned-integer >>;
 render(Int) when is_integer(Int), Int >= -32768, Int < 32768 ->
 	<< $w, Int:16/big-integer >>;
 render(Int) when is_integer(Int), Int >= 0, Int < 65536 ->
@@ -62,9 +62,9 @@ parse(<< $t, Rest/binary>>) ->
 	{ true, Rest }; 
 parse(<< $f, Rest/binary>>) ->
 	{ false, Rest }; 
-parse(<< $c, Int:8, Rest/binary>>) ->
+parse(<< $c, Int:8/signed-integer, Rest/binary>>) ->
 	{ Int, Rest };
-parse(<< $C, Int:8, Rest/binary>>) ->
+parse(<< $C, Int:8/unsigned-integer, Rest/binary>>) ->
 	{ Int, Rest };
 parse(<< $w, Int:16/big-integer, Rest/binary>>) ->
 	{ Int, Rest };
