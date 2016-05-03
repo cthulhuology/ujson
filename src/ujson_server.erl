@@ -55,7 +55,7 @@ handle_cast(Message, Server) ->
 	io:format("Unknown message ~p~n", [ Message ]),
 	{ noreply, Server }.
 
-handle_info( {udp, Socket, IP, InPortNo, Packet}, Server = #ujson_server{
+handle_info( {udp, _Socket, _IP, _InPortNo, Packet}, Server = #ujson_server{
 	module = Module, function = Function }) ->
 	spawn(Module,Function,[ Packet ]),
 	{ noreply, Server }.
