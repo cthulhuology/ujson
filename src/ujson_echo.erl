@@ -3,4 +3,5 @@
 -export([ echo/1 ]).
 
 echo(Message) ->
-	io:format("~p~n", [ Message ]).
+	Data = ujson:decode(Message),
+	io:format("~p~n", [ Data ]).
