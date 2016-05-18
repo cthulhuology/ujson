@@ -38,7 +38,7 @@ stop(Src) ->
 %% Private Behavior
 
 init(Server = #ujson_server{ port = Src }) ->
-	{ ok, Socket } = gen_udp:open(Src, [ binary, { active, true }]),
+	{ ok, Socket } = gen_udp:open(Src, [ binary, { active, true }, { recbuf, 65536 }]),
 	{ ok, Server#ujson_server{ socket = Socket } }.
 
 handle_call({ send, Addr, Port, Message }, _From, Server = #ujson_server{
