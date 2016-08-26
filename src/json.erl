@@ -199,7 +199,12 @@ to_number([]) ->
 	false;	
 to_number(Acc) ->
 	try list_to_float(Acc)
-	catch error:badarg -> list_to_integer(Acc) end.
+	catch error:badarg -> 
+		try 
+			list_to_integer(Acc) 
+		catch error:badarg ->
+			false
+		end.
 
 escape( Bin ) when is_binary(Bin) ->
 	escape( Bin, <<>> ).
