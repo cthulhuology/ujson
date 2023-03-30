@@ -1,6 +1,16 @@
 ujson - microjson protocol
 ==========================
 
+Getting Started
+---------------
+
+I use beamer to build (https://github.com/cthulhuology/beamer)
+
+	beamer make
+
+About the protocol
+------------------
+
 The microjson protocol (ujson) is designed to provide a simple way to send both
 structured and unstructured data to and from microcontrollers.  
 

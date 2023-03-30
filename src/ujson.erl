@@ -25,6 +25,9 @@ encode(Atom) when is_atom(Atom) ->
 encode(String) when is_binary(String) ->	
 	L = size(String),
 	<< $s, L:16/big-unsigned-integer, String/binary >>;
+encode({blob,Blob}) when is_binary(Blob) ->
+	L = size(Blob),
+	<< $b, L:32/big-unsigned-integer, Blob/binary >>;
 encode(Int) when is_integer(Int), Int >= -128, Int < 128 ->
 	<< $c, Int:8/signed-integer >>;
 encode(Int) when is_integer(Int), Int >= 0, Int < 256 ->
@@ -86,6 +89,10 @@ decode(<< $s, 0:16/big-unsigned-integer, Rest/binary>>) ->
 	{ <<>>, Rest };
 decode(<< $s, Size:16/big-unsigned-integer, String:Size/binary, Rest/binary >>) ->
 	{ String, Rest };
+decode(<< $b, 0:32/big-unsigned-integer, Rest/binary>>) ->
+	{ <<>>, Rest };
+decode(<< $b, Size:32/big-unsigned-integer, Blob:Size/binary, Rest/binary >>) ->
+	{ {blob, Blob}, Rest };
 decode(<< $a, 0:16/big-unsigned-integer, Rest/binary >>) ->
 	{ [], Rest };
 decode(<< $a, Size:16/big-unsigned-integer, Array:Size/binary, Rest/binary >>) ->
